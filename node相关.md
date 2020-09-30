@@ -55,3 +55,74 @@ fetch( ' //api.github.com/users ' ).then(res => res.json()).then(json=>{
 
 ## Koa 中间件与洋葱模型
 
+Koa 执行下一个中间件需要调用 `next()`
+
+```js
+app.use(async (ctx, next)=>{
+    // 调用下一个中间件
+    await next();
+    console.log(1);
+    ctx.body = 'Hello Zhihu API';
+});
+app.use(async (ctx)=>{
+    console.log(2);
+})
+```
+
+### 洋葱模型
+
+洋葱模型是一种中间件流程控制方式。
+
+![img](assets/9566895-a1d3c5a8db4a088d.webp)
+
+```js
+const Koa = require('koa');
+const app = new Koa();
+
+app.use(async (ctx, next) => {
+  console.log('中间件 1 进入');
+  await next();
+  console.log('中间件 1 退出');
+});
+
+app.use(async (ctx, next) => {
+  console.log('中间件 2 进入');
+  await next();
+  console.log('中间件 2 退出');
+});
+
+app.use(async (ctx, next) => {
+  console.log('中间件 3');
+});
+
+app.listen(3000);
+```
+
+结果：
+
+```js
+中间件 1 进入
+中间件 2 进入
+中间件 3 
+中间件 2 退出
+中间件 1 退出
+```
+
+## 路由
+
+### 路由是什么？
+
+- 决定了不同 URL 是如何被不同地执行的
+- 在 Koa 中，是一个中间件
+
+### 为什么要用路由？
+
+- 如果没有路由？
+  - 所有请求都做了相同的事
+  - 所有的请求都会返回相同的结果
+
+### 路由存在的意义
+
+- 处理不同的 URL
+- 处理不同的 HTTP 方法
+- 解析 URL 上的参数
