@@ -229,8 +229,33 @@ app.use(usersRouter.routes());
 
 
 app.listen(3000);
-
-
-
 ```
 
+## HTTP options方法的作用是什么？
+
+### 为何要了解 options 方法的作用? 
+
+- 这是一道面试题
+- 帮助理解 koa-router 的 allowedMethods 的作用
+
+### options 方法的作用
+
+- 检测服务器所支持的请求方法
+- CORS 中的预检请求（检测是否允许跨域）
+
+### allowedMethods 的作用
+
+- 响应 options 方法，告诉它所支持的请求方法
+  - `app.use(usersRouter.allowedMethods());`
+- 相应的返回 405（不允许）和 501（没实现）
+  - **405 不允许**：服务器支持该方法，但是还未对该方法进行响应处理。
+  - **501 没实现**：服务器本身不支持该方法。
+
+
+
+##   RESTful API 最佳实践——增删改查应该返回什么响应？
+
+### 操作步骤
+
+- 实现增删改查
+- 返回正确的响应

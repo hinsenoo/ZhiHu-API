@@ -46,6 +46,7 @@ usersRouter.get('/:id',auth, (ctx)=>{
 // router.routes() 来加载路由中间件
 app.use(router.routes());
 app.use(usersRouter.routes());
+app.use(usersRouter.allowedMethods());
 
 
 
