@@ -7,14 +7,14 @@ const usersRouter = new Router({ prefix: '/users' });
 
 // 多中间件，使用场景：用户校验、数据安全（分层系统里面的安全层);
 // 鉴权
-const auth = async(ctx, next) => {
-    if(ctx.url !== 'users'){
-        ctx.throw(401);
-    }
-};
+// const auth = async(ctx, next) => {
+//     if(ctx.url !== 'users'){
+//         ctx.throw(401);
+//     }
+// };
 
 // 处理不同的 URL
-router.get('/', (ctx)=>{
+router.get('/', (ctx) => {
     ctx.body = '这是主页';
 });
 // 正常写法=============================
@@ -32,16 +32,38 @@ router.get('/', (ctx)=>{
 //     ctx.body = `这是用户 ${ctx.params.id}`;
 // });
 
+// 4-3
 // 前缀写法============================= 
-usersRouter.get('/', (ctx)=>{
-    ctx.body = '这是用户列表';
+// 4-5、RESTful API 最佳实践——增删改查应该返回什么响应
+// 1、获取用户列表
+usersRouter.get('/', (ctx) => {
+    ctx.body = [
+        { name: '李雷' },
+        { name: '韩梅梅' }
+    ];
 });
-usersRouter.post('/', (ctx)=>{
-    ctx.body = '创建用户';
+// 2、新建用户
+usersRouter.post('/', (ctx) => {
+    ctx.body = { name: '李雷' };
 });
-usersRouter.get('/:id',auth, (ctx)=>{
-    ctx.body = `这是用户 ${ctx.params.id}`;
+// 3、获取用户
+usersRouter.get('/:id', (ctx) => {
+    ctx.body = { name: '李雷' };
 });
+// 4、修改用户
+usersRouter.put('/:id', (ctx) => {
+    ctx.body = { name: '李雷2' };
+});
+// 5、删除用户
+usersRouter.delete('/:id', (ctx) => {
+    // 删除成功，但是不返回内容
+    ctx.status = 204;
+});
+
+// 4-3、鉴权
+// usersRouter.get('/:id',auth, (ctx)=>{
+//     ctx.body = `这是用户 ${ctx.params.id}`;
+// });
 
 // router.routes() 来加载路由中间件
 app.use(router.routes());
