@@ -341,3 +341,38 @@ usersRouter.delete('/:id', (ctx) => {
 - 发送 header
   -  `ctx.set('Allow', 'GET, POST');`
 - 实现用户的增删改查
+
+```js
+// 内存数据库
+const db = [{ name: "李雷" }];
+
+usersRouter.get('/', (ctx) => {
+    // 设置响应头
+    // ctx.set('Allow', 'GET, POST');
+    ctx.body = db;
+});
+// 2、新建用户
+usersRouter.post('/', (ctx) => {
+    // 从请求体中获取新增加的用户
+    db.push(ctx.request.body);
+    ctx.body = ctx.request.body;
+});
+// 3、获取用户
+usersRouter.get('/:id', (ctx) => {
+    // 字符串转数字
+    ctx.body = db[ctx.params.id * 1];
+});
+// 4、修改用户
+usersRouter.put('/:id', (ctx) => {
+    db[ctx.params.id * 1] = ctx.request.body;
+    ctx.body = ctx.request.body;
+});
+// 5、删除用户
+usersRouter.delete('/:id', (ctx) => {
+    // 删除数组中的内容
+    db.splice(ctx.params.id * 1,1);
+    // 删除成功，但是不返回内容
+    ctx.status = 204;
+});
+```
+

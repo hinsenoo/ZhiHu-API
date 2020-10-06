@@ -48,18 +48,24 @@ usersRouter.get('/', (ctx) => {
 });
 // 2、新建用户
 usersRouter.post('/', (ctx) => {
-    ctx.body = { name: '李雷' };
+    // 从请求体中获取新增加的用户
+    db.push(ctx.request.body);
+    ctx.body = ctx.request.body;
 });
 // 3、获取用户
 usersRouter.get('/:id', (ctx) => {
-    ctx.body = { name: '李雷' };
+    // 字符串转数字
+    ctx.body = db[ctx.params.id * 1];
 });
 // 4、修改用户
 usersRouter.put('/:id', (ctx) => {
-    ctx.body = { name: '李雷2' };
+    db[ctx.params.id * 1] = ctx.request.body;
+    ctx.body = ctx.request.body;
 });
 // 5、删除用户
 usersRouter.delete('/:id', (ctx) => {
+    // 删除数组中的内容
+    db.splice(ctx.params.id * 1,1);
     // 删除成功，但是不返回内容
     ctx.status = 204;
 });
