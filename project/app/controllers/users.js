@@ -4,6 +4,7 @@ const db = [{ name: "李雷" }];
 class UsersCtl {
     // 1、获取用户列表
     find(ctx) {
+        a.b;
         ctx.body = db;
     }
     // 2、新建用户
