@@ -486,6 +486,74 @@ module.exports = router;
     ctx.throw(412, '先决条件失败：id 大于等于数组长度了');
     ```
 
-    
-
 - 了解 Koa 自带的错误处理做了什么
+
+## 自己编写错误处理中间件
+
+### 操作步骤
+
+- 自己编写错误处理中间件
+
+- 制造 404、412、500 三种错误来测试
+
+  ```js
+  
+  // 编写错误处理中间件
+  app.use(async (ctx,next) => {
+      try{
+          await next();
+      }catch(err){
+          ctx.status = err.status || err.statusCode || 500;
+          ctx.body = {
+              message: err.message
+          };
+      }
+  });
+  ```
+
+  
+
+## 使用 koa-json-error 进行错误处理
+
+### 操作步骤
+
+- 安装 koa-json-error
+
+- 使用 koa-json-error 的默认配置处理错误
+
+- 修改配置使其在生成环境下禁用错误堆栈的返回
+
+  - 开发环境下：
+
+    ![1601990604299](assets/1601990604299.png)
+
+  - 生产环境下：
+
+    ![1601990636774](assets/1601990636774.png)
+
+  - 通过修改配置：`postFormat`——定制返回格式
+
+    ```js
+    app.use(error({
+        // 在生产环境禁用错误堆栈的返回
+        // 获取环境变量 process.env.NODE_ENV
+        // 第二个参数为返回的对象
+        postFormat: (e, { stack, ...rest }) => process.env.NODE_ENV  === 'production' ? rest : { stack, ...rest }
+    }));
+    ```
+
+  - cross-env：跨平台设置环境变量
+
+  - `./package.json`
+
+    ```json
+    "scripts": {
+        // linux 下可以直接配置环境变量
+        //"start": "NODE_ENV=production node app"
+        "start": "cross-env NODE_ENV=production node app",
+        // 开发环境下
+        "dev": "nodemon app"
+     },
+    ```
+
+    

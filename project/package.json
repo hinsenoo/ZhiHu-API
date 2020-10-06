@@ -4,16 +4,19 @@
   "description": "仿知乎 RESTful api",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon app"  
+    "start": "cross-env NODE_ENV=production node app",
+    "dev": "nodemon app"
   },
   "author": "Hins",
   "license": "ISC",
   "dependencies": {
     "koa": "^2.13.0",
     "koa-bodyparser": "^4.3.0",
+    "koa-json-error": "^3.1.2",
     "koa-router": "^9.4.0"
   },
   "devDependencies": {
+    "cross-env": "^7.0.2",
     "nodemon": "^2.0.4"
   }
 }
