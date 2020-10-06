@@ -259,3 +259,85 @@ app.listen(3000);
 
 - 实现增删改查
 - 返回正确的响应
+
+```js
+// 1、获取用户列表
+usersRouter.get('/', (ctx) => {
+    ctx.body = [
+        { name: '李雷' },
+        { name: '韩梅梅' }
+    ];
+});
+// 2、新建用户
+usersRouter.post('/', (ctx) => {
+    ctx.body = { name: '李雷' };
+});
+// 3、获取用户
+usersRouter.get('/:id', (ctx) => {
+    ctx.body = { name: '李雷' };
+});
+// 4、修改用户
+usersRouter.put('/:id', (ctx) => {
+    ctx.body = { name: '李雷2' };
+});
+// 5、删除用户
+usersRouter.delete('/:id', (ctx) => {
+    // 删除成功，但是不返回内容
+    ctx.status = 204;
+});
+```
+
+
+
+## 控制器简介
+
+### 什么是控制器？
+
+- 拿到路由分配的任务，并执行
+- 在 Koa 中，是一个中间件
+
+### 为什么要用控制器？
+
+- 获取 HTTP 请求参数
+- 处理业务逻辑
+- 发送 HTTP 响应
+
+#### 1. 获取 HTTP 请求参数
+
+- Query String，如 `?q=keyword`
+- Router Params，如 `/users/:id`
+- Body，如 `{name: "李雷"}`
+- Header，如 `Accept（媒体格式）、Cookie`
+
+#### 2. 发送 HTTP 响应
+
+- 发送 Status，如 `200/400` 等
+- 发送 Body，如 `{ name: "李雷" }`
+- 发送 Header，如 `Allow、Content-Type`
+
+### 编写控制器最佳实践
+
+- 每个资源的控制器放在不同的文件里
+- 尽量使用类 + 类方法的形式编写控制器
+- 严谨的错误处理
+
+### 获取 HTTP 请求参数
+
+#### 操作步骤
+
+- 学习断点调试
+- 获取 query 
+- 获取 router params
+- 获取 body
+  - 需要安装 Koa 中间件 —— `koa-bodyparser`
+- 获取 header 
+
+### 发送 HTTP 响应
+
+- 发送 status 
+  - `ctx.status = 204;`
+- 发送 body
+  - `*ctx*.body = { name: '李雷' };`
+- 发送 header
+  -  `ctx.set('Allow', 'GET, POST');`
+- 实现用户的增删改查

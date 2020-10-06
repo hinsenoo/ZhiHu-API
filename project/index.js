@@ -1,9 +1,14 @@
 const Koa = require('koa');
+const bodyparser = require('koa-bodyparser');
 const Router = require('koa-router');
 const app = new Koa();
 const router = new Router();
 // 前缀替代
 const usersRouter = new Router({ prefix: '/users' });
+
+// 内存数据库
+const db = [{ name: "李雷" }];
+
 
 // 多中间件，使用场景：用户校验、数据安全（分层系统里面的安全层);
 // 鉴权
@@ -37,10 +42,9 @@ router.get('/', (ctx) => {
 // 4-5、RESTful API 最佳实践——增删改查应该返回什么响应
 // 1、获取用户列表
 usersRouter.get('/', (ctx) => {
-    ctx.body = [
-        { name: '李雷' },
-        { name: '韩梅梅' }
-    ];
+    // 设置响应头
+    // ctx.set('Allow', 'GET, POST');
+    ctx.body = db;
 });
 // 2、新建用户
 usersRouter.post('/', (ctx) => {
@@ -65,6 +69,8 @@ usersRouter.delete('/:id', (ctx) => {
 //     ctx.body = `这是用户 ${ctx.params.id}`;
 // });
 
+// 注册请求体解析中间件
+app.use(bodyparser());
 // router.routes() 来加载路由中间件
 app.use(router.routes());
 app.use(usersRouter.routes());
