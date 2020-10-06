@@ -1,6 +1,7 @@
 const Koa = require('koa');
 const bodyparser = require('koa-bodyparser');
 const error = require('koa-json-error');
+const paramter = require('koa-parameter');
 const app = new Koa();
 const routing = require('./routes');
 
@@ -12,6 +13,9 @@ app.use(error({
 }));
 // 注册请求体解析中间件
 app.use(bodyparser());
+// 校验参数中间件（通常用于校验请求体)
+// 传入 app 可以作为去全局方法来使用
+app.use(paramter(app));
 // 批量读取注册路由
 routing(app);
 

@@ -557,3 +557,62 @@ module.exports = router;
     ```
 
     
+
+## 使用 koa-parameter 校验参数
+
+### 操作步骤
+
+- 安装 koa-parameter
+
+- 使用 koa-parameter 校验参数
+
+  `./index,js`
+
+  ```js
+  const paramter = require('koa-parameter');
+  //...
+  // 校验参数中间件（通常用于校验请求体)
+  // 传入 app 可以作为去全局方法来使用
+  app.use(paramter(app));
+  ```
+
+  `./controllers/users.js`
+
+  ```js
+  //...
+  	created(ctx) {
+          // type 数据类型 required 是否必需
+          ctx.verifyParams({
+              name: {type: 'string', required: true},
+              age: {type:'number', required: false}
+          });
+          // 从请求体中获取新增加的用户
+          db.push(ctx.request.body);
+          ctx.body = ctx.request.body;
+      }
+  //...
+  ```
+
+  
+
+- 制造 422 错误来测试校验结果
+
+  - name 参数不为 `string`类型
+
+     ![1601991936106](assets/1601991936106.png)
+
+    返回错误：422
+
+    ![1601991968993](assets/1601991968993.png)
+
+  - 没有 name 参数
+
+    ![1601992006701](assets/1601992006701.png)
+
+  - age 参数不为 `number` 类型
+
+    ![1601992068794](assets/1601992068794.png)
+
+    ![1601992079275](assets/1601992079275.png)
+
+    
