@@ -8,6 +8,9 @@ class UsersCtl {
     }
     // 2、新建用户
     findById(ctx) {
+        if(ctx.params.id * 1 >= db.length){
+            ctx.throw(412, '先决条件失败：id 大于等于数组长度了');
+        }
         // 字符串转数字
         ctx.body = db[ctx.params.id * 1];
     }
