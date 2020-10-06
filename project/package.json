@@ -4,7 +4,7 @@
   "description": "仿知乎 RESTful api",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js"
+    "start": "nodemon app"  
   },
   "author": "Hins",
   "license": "ISC",

@@ -376,3 +376,78 @@ usersRouter.delete('/:id', (ctx) => {
 });
 ```
 
+## 更合理的目录结构
+
+### 操作步骤
+
+- 将路由单独放在一个目录里
+- 将控制器单独放在一个目录
+- 使用类 + 类方法的方式组织控制器
+
+![1601979928824](assets/1601979928824.png)
+
+路由批量导入并注册：
+
+`./routes/index.js`
+
+```js
+// 批量读取目录下的文件，进行注册
+const fs = require('fs');
+
+module.exports = (app) => {
+    // 同步读取目录
+    fs.readdirSync(__dirname).forEach(file => {
+        if (file === 'index.js') { return; }
+        // 导入路由文件
+        const route = require(`./${file}`);
+        // 注册路由，并且支持响应 options 方法
+        app.use(route.routes()).use(route.allowedMethods());
+    })
+}
+```
+
+`./index.js`
+
+```js
+const Koa = require('koa');
+const bodyparser = require('koa-bodyparser');
+const app = new Koa();
+const routing = require('./routes');
+
+// 注册请求体解析中间件
+app.use(bodyparser());
+// 批量读取注册路由
+routing(app);
+
+app.listen(3000, () => console.log('程序启动在 3000 端口'));
+```
+
+控制器与路由分离：(采用类写法)
+
+`./controllers/home.js`
+
+```JS
+// ES6 类写法
+class HomeCtl {
+    index(ctx){
+        ctx.body = '这是主页';
+    }
+}
+
+// 实例化类并导出
+module.exports = new HomeCtl();
+```
+
+`./routes/home.js`
+
+```js
+// 主页路由
+const Router = require('koa-router');
+const router = new Router();
+const { index } = require('../controllers/home');
+
+router.get('/', index);
+
+module.exports = router;
+```
+
