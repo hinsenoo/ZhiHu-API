@@ -1,3 +1,13 @@
+## 项目结构
+
+- app
+  - controllers —— 控制器模块
+  - routes —— 路由模块
+  - models —— 模型集合
+  - config.js —— 配置文件
+  - index.js —— 项目入口文件
+- package.json ：项目配置信息，依赖模块的定义
+
 ## Koa 简介（抠啊）
 
 - 基于 Node.js 的下一代 Web 框架
@@ -615,4 +625,162 @@ module.exports = router;
 
     ![1601992079275](assets/1601992079275.png)
 
-    
+## NoSQL 简介
+
+### 什么是 NoSQL？
+
+- 对不同于传统的关系型数据库的数据库管理系统的统称
+
+### NoSQL 数据库的分类
+
+- 列存储（HBase）
+- 文档存储（MongoDB）
+  - 按 JSON 存储，一个 JSON 就是一个文档，可以把文档想象成表格里的一行（如一个 name 为李雷的 JSON，就是用户数据集合其中一行 ，如果你要请求用户列表，那么就会返回一个数组，数组的每一项就是 JSON）
+- Key-value 存储（Redis）
+- 图存储（FlockDB）
+- 对象存储（db4o）
+- XML 存储（BaseX）
+
+### 为什么要用 NoSQL？ 
+
+- 简单（没有原子性、一致性、隔离性等复杂规范）
+- 便于横向拓展
+- 适合超大规模的数据存储
+- 很灵活地存储复杂结构的数据（Schema Free）
+
+注：**模式自由（Schema-free)**，所谓“面向集合”（Collection-Oriented），意思是数据被分组存储在数据集中，被称为一个集合（Collection)。每个集合在数据库中都有一个唯一的标识名，并且可以包含无限数目的文档。集合的概念类似关系型数据库（RDBMS）里的表（Table），不同的是它不需要定义任何模式（Schema)
+
+## MongoDB 简介
+
+### 什么是 MongoDB？
+
+- 来自于英文单词 “Humongous”，中文含义为 “庞大”
+- 面向文档存储的开源数据库
+- 由 C++ 编写而成
+
+### 为什么要用 MongoDB？
+
+- 性能好（使用内存计算）
+- 大规模数据存储（可拓展性）
+- 可靠安全（本地复制、自动故障转移）
+- 方便存储复杂数据结构（Schema Free）
+
+### MongoDB 下載
+
+- 官网下载
+- 支持常见平台（Windows、Linux、OSX）
+
+### 云 MongoDB
+
+- 阿里云、腾讯云（收费）
+- MongoDB 官方的 MongoDB Atlas（免费 + 收费）
+
+
+
+## MongoDB Atlas（云数据库）
+
+[MongoDB Atlas](https://cloud.mongodb.com/)
+
+https://cloud.mongodb.com/v2/5f7f3c2010d7031e97352422#clusters
+
+### 操作步骤
+
+- 注册用户
+- 创建集群
+- 添加数据库用户
+- 设置 IP 地址白名单
+- 获取连接地址
+
+## 使用 Mongoose 连接 MongoDB
+
+### 操作步骤
+
+- 安装 Mongoose
+- 用 Mongoose 连接 MongoDB
+
+导入配置文件
+
+`./config.js`
+
+```js
+module.exports = {
+    connectionStr: `mongodb+srv://hins:${process.env.DB_PASS}@hins.naxyu.mongodb.net/<dbname>?retryWrites=true&w=majority`,
+}
+```
+
+`./index.js`
+
+```js
+const { connectionStr } = require('./config');
+// 连接 mongodb 
+mongoose.connect(connectionStr,{ useNewUrlParser: true, useUnifiedTopology: true }, ()=>console.log('MongoDB 连接成功了!'));
+mongoose.connection.on('error', console.error);
+```
+
+
+
+## 补：NPM库：dotenv，从文件加载环境变量
+
+Node.js中的dotenv库的使用，由于项目不同需求，需要配置不同环境变量，按需加载不同的环境变量文件，使用dotenv，可以完美解决这一问题。
+
+使用dotenv，只需要将程序的环境变量配置写在.env文件中。
+
+### 一、.env的作用
+
+`.env`文件是用来自定义配置的一个简单方法，可以将一些不能在代码中存储的敏感/账号数据从代码中剥离出来，作为环境变量存储在环境中。
+
+### 二、.env的使用方法
+
+`.env` 文件通常不包含在版本控制内，它可能包含敏感的 API Key 或者 密码。所有需要环境变量定义(不敏感的定义)的项目都需要创建一个`.env.example` 文件，这个环境变量包含他们自己定义的环境变量或者联合开发包含的环境变量。项目合作开发者可以独立的复制 `.env.example`并且重命名为`.env`，并且修改为正确的本地环境配置，存储密码key或者提供他们必要的值。 在这个使用方法中 `.env` 文件应该添加到`.gitignore`文件中并且永远不会被项目的合作者签入/签出。这个方法确保里边没有敏感的 API Key 或者 密码在版本控制中出现从而减少了安全风险，并且开发环境中的配置永远不会告知合作开发者。
+
+### .env file
+
+```undefined
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=s1mpl3
+```
+
+然后，在Node.js程序启动时运行：
+
+```jsx
+require('dotenv').config() // 默认读取项目根目录下的.env文件
+```
+
+接着，我们就可以在接下来的程序中方便地使用环境变量了：
+
+```jsx
+const db = require('db')
+db.connect({
+  host: process.env.DB_HOST,
+  username: process.env.DB_USER,
+  password: process.env.DB_PASS
+})
+```
+
+
+
+## 设计用户模块的 Schema
+
+### 操作步骤
+
+- 分析用户模块的属性
+- 编写用户模块的 Schema
+- 使用 Schema 生成用户 Model
+
+`./models/users.js`
+
+```js
+const mongoose = require('mongoose');
+
+const { Schema, model } = mongoose;
+
+// 生成文档 Schema，定义结构
+const userSchema = new Schema({
+    name: { type: String, required: true },
+});
+
+// 用户模型
+module.exports = model('User', userSchema);
+```
+
