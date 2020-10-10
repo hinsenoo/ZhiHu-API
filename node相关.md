@@ -691,6 +691,28 @@ https://cloud.mongodb.com/v2/5f7f3c2010d7031e97352422#clusters
 - 设置 IP 地址白名单
 - 获取连接地址
 
+
+
+## Mongoose 介绍
+
+### 概述
+
+Mongoose 是 NodeJS 的驱动，不能作为其他语言的驱动。Mongoose 有两个特点：
+
+1、通过关系型数据库的思想来设计非关系型数据库
+
+2、基于 mongodb 驱动，简化操作
+
+![1602342031578](assets/1602342031578.png)
+
+​		Mongooose中，有三个比较重要的概念，分别是 **Schema、Model、Documents**。它们的关系是：Schema 生成 Model，Model 创造 Document，Model 和 Document 都可对数据库操作造成影响，但 Model 比 Document 更具操作性。
+
+​		**Scheme 用于定义数据库的结构**。类似创建表时的数据定义（不仅仅可以定义文档的结构和属性，还可以定义文档的实例方法、静态模型方法、复合索引等），每个 Schema 会映射到 mongodb 中的一个 collection，Schema 不具备操作数据库的能力。
+
+​		**Model 是由 Schema 编译而成的构造器，具有抽象属性和行为，可以对数据库进行增删改查。**Model 的每一个实例（instance）就是一个文档 document。
+
+​		**Document 是 Model 创建的实体，它的操作也会影响数据库。**
+
 ## 使用 Mongoose 连接 MongoDB
 
 ### 操作步骤
@@ -758,6 +780,90 @@ db.connect({
 })
 ```
 
+## Mongoose 中的 Schema
+
+Schema 主要用于定义 MongoDB 中集合 Collection 里文档 document 的结构　　
+
+定义 Schema 非常简单，指定字段名和类型即可，支持的类型包括以下8种
+
+```
+String      字符串
+Number      数字    
+Date        日期
+Buffer      二进制
+Boolean     布尔值
+Mixed       混合类型
+ObjectId    对象ID    
+Array       数组
+```
+
+通过 mongoose.Schema 来调用 Schema ，然后使用 new 方法来创建 schema 对象
+
+```js
+var mongoose = require('mongoose');
+var Schema = mongoose.Schema;
+
+var mySchema = new Schema({
+  title:  String,
+  author: String,
+  body:   String,
+  comments: [{ body: String, date: Date }],
+  date: { type: Date, default: Date.now },
+  hidden: Boolean,
+  meta: {
+    votes: Number,
+    favs:  Number
+  }
+});
+```
+
+- 注意：创建Schema对象时，声明字段类型有两种方法，一种是首字母大写的字段类型，另一种是引号包含的小写字段类型
+
+```
+var mySchema = new Schema({title:String, author:String});
+//或者 
+var mySchema = new Schema({title:'string', author:'string'});
+```
+
+`_id`：
+
+　　每一个文档 document 都会被 mongoose 添加一个不重复的_id，_id 的数据类型不是字符串，而是 ObjectID 类型。如果在查询语句中要使用 _id，则需要使用 `findById` 语句，而不能使用 `find` 或 `findOne` 语句
+
+
+
+## Mongoose 中的 Model
+
+模型Model是根据 Schema 编译出的构造器，或者称为类，通过 Model 可以实例化出文档对象 document。
+
+文档 document 的创建和检索都需要通过模型 Model 来处理。
+
+```js
+mongoose.model()
+```
+
+使用 model() 方法，将 Schema 编译为 Model。model() 方法的第一个参数是模型名称
+
+- 注：Mongoose会将集合名称设置为模型名称的小写版
+
+### 实例化文档document
+
+通过对原型 Model1 使用new方法，实例化出文档 document 对象
+
+```js
+var mongoose = require('mongoose');
+mongoose.connect("mongodb://u1:123456@localhost/db1", function(err) {
+    if(err){
+        console.log('连接失败');
+    }else{
+        console.log('连接成功');
+        var schema = new mongoose.Schema({ num:Number, name: String, size: String});
+        var MyModel = mongoose.model('MyModel', schema);
+        var doc1 = new MyModel({ size: 'small' });
+        console.log(doc1.size);//'small'
+    }
+});
+```
+
 
 
 ## 设计用户模块的 Schema
@@ -783,4 +889,83 @@ const userSchema = new Schema({
 // 用户模型
 module.exports = model('User', userSchema);
 ```
+
+## 用 MongoDB 实现用户的增删改查
+
+### 操作步骤
+
+- 用 Mongoose 实现增删改查接口
+- 用 Postman 测试接口
+
+### 定义和添加模型
+
+- 模型使用 `Schema` 接口进行定义。 `Schema` 可以定义每个文档中存储的字段，及字段的验证要求和默认值。
+
+- `mongoose.model()` 方法将模式“编译”为模型。模型就可以用来查找、创建、更新和删除特定类型的对象。
+
+ `./models/user.js`
+
+```js
+const mongoose = require('mongoose');
+
+const { Schema, model } = mongoose;
+
+// 生成文档 Schema，定义一个模式
+const userSchema = new Schema({
+    name: { type: String, required: true },
+});
+
+// 创建用户模型，使用模式“编译”模型
+module.exports = model('User', userSchema);
+```
+
+### 增删改查
+
+`./controllers/users.js`
+
+- 
+
+```js
+// 用户模型
+const User = require('../models/users');
+
+class UsersCtl {
+    // 1、获取用户列表
+    async find(ctx) {
+        ctx.body = await User.find();
+    }
+    // 2、获取
+    async findById(ctx) {
+        const user = await User.findById(ctx.params.id);
+        if(!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user;
+    }
+    // 3、新建用户
+    async created(ctx) {
+        // type 数据类型 required 是否必需
+        ctx.verifyParams({
+            name: {type: 'string', required: true},
+        });
+        const user = await new User(ctx.request.body).save();
+        ctx.body = user;
+    }
+    // 4、修改用户
+    async updated(ctx) {
+        ctx.verifyParams({
+            name: {type: 'string', required: true},
+        });
+        const user = await User.findOneAndUpdate(ctx.params.id, ctx.request.body);
+        if(!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user;
+    }
+    async delete(ctx) {
+        const user = await User.findByIdAndRemove(ctx.params.id);
+        if(!user) { ctx.throw(404, '用户不存在'); }
+        // 删除成功，但是不返回内容
+        ctx.status = 204;
+    }
+}
+```
+
+
 

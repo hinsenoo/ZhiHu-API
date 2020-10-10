@@ -1,49 +1,41 @@
 // 内存数据库
-const db = [{ name: "李雷" }];
+// const db = [{ name: "李雷" }];
+
+// 用户模型
+const User = require('../models/users');
 
 class UsersCtl {
     // 1、获取用户列表
-    find(ctx) {
-        a.b;
-        ctx.body = db;
+    async find(ctx) {
+        ctx.body = await User.find();
     }
     // 2、获取
-    findById(ctx) {
-        if(ctx.params.id * 1 >= db.length){
-            ctx.throw(412, '先决条件失败：id 大于等于数组长度了');
-        }
-        // 字符串转数字
-        ctx.body = db[ctx.params.id * 1];
+    async findById(ctx) {
+        const user = await User.findById(ctx.params.id);
+        if(!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user;
     }
     // 3、新建用户
-    created(ctx) {
+    async created(ctx) {
         // type 数据类型 required 是否必需
         ctx.verifyParams({
             name: {type: 'string', required: true},
-            age: {type:'number', required: false}
         });
-        // 从请求体中获取新增加的用户
-        db.push(ctx.request.body);
-        ctx.body = ctx.request.body;
+        const user = await new User(ctx.request.body).save();
+        ctx.body = user;
     }
     // 4、修改用户
-    updated(ctx) {
-        if(ctx.params.id * 1 >= db.length){
-            ctx.throw(412, '先决条件失败：id 大于等于数组长度了');
-        }
+    async updated(ctx) {
         ctx.verifyParams({
             name: {type: 'string', required: true},
-            age: {type:'number', required: false}
         });
-        db[ctx.params.id * 1] = ctx.request.body;
-        ctx.body = ctx.request.body;
+        const user = await User.findOneAndUpdate(ctx.params.id, ctx.request.body);
+        if(!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user;
     }
-    delete(ctx) {
-        if(ctx.params.id * 1 >= db.length){
-            ctx.throw(412, '先决条件失败：id 大于等于数组长度了');
-        }
-        // 删除数组中的内容
-        db.splice(ctx.params.id * 1, 1);
+    async delete(ctx) {
+        const user = await User.findByIdAndRemove(ctx.params.id);
+        if(!user) { ctx.throw(404, '用户不存在'); }
         // 删除成功，但是不返回内容
         ctx.status = 204;
     }
