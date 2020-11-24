@@ -11,7 +11,7 @@ const { connectionStr } = require('./config');
 
 
 // 连接 mongodb 
-mongoose.connect(connectionStr,{ useNewUrlParser: true, useUnifiedTopology: true }, ()=>console.log('MongoDB 连接成功了!'));
+mongoose.connect(connectionStr,{ useNewUrlParser: true, useUnifiedTopology: true,useFindAndModify: false }, ()=>console.log('MongoDB 连接成功了!'));
 // 将连接与错误事件绑定（以获得连接错误的提示）
 mongoose.connection.on('error', console.error);
 

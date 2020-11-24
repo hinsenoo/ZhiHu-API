@@ -1,3 +1,5 @@
+
+
 ## 项目结构
 
 - app
@@ -297,7 +299,7 @@ usersRouter.delete('/:id', (ctx) => {
 });
 ```
 
-
+- `put`：整体替换，`patch`：部分替换
 
 ## 控制器简介
 
@@ -969,3 +971,298 @@ class UsersCtl {
 
 
 
+## Session 简介
+
+Session 称为 ”会话控制“，在服务端生成的，存储在服务器端，即存在内存中。session 在Web开发环境下是指一类用来在客户端与服务器端之间保持状态的解决方案。
+
+Session 是一种用户认证与授权的方式。
+
+### 工作原理
+
+![1602346451396](assets/1602346451396.png)
+
+- 客户端发送 `POST` 请求并且携带用户名和密码给服务端；
+- 服务端对用户名和密码进行核对，核对成功后，生成身份认证相关的 `session` 数据，然后保存在内存中或者内存数据库中，并通过响应头将 `cookie` 设置成 `SessionId` 返回给客户端；
+- 客户端则会把该 `SessionId`  储存在 `cookie` 当中；
+- 此后，客户端所有的请求都会携带值为 `SessionId`  的 `cookie`
+- 服务器会通过该 `SessionId`来寻找`session` 数据并解析该数据，来判断用户是否登录以及用户的相关权限。 
+- 注：前端如果想退出登录时，清除客户端本地 `cookie` 即可；后端想强制前端重新认证的话，在服务器直接清除 `session` 即可；
+
+### Session 的优势
+
+-  相比 JWT，最大的优势就在于可以主动清除 session 了
+- session 保存在服务器端，相对较为安全
+- 结合 cookie 使用，较为灵活，兼容性较好
+
+### Session 的劣势
+
+- cookie + session 在跨域场景表现并不好
+- 如果是分布式部署，需要做多机共享 session 机制
+- 基于 cookie 的机制很容易被 CSRF（跨站请求伪造攻击）
+- 查询 session 信息可能会有数据库查询操作
+
+### Session 相关的概念介绍
+
+- session：主要存放服务器端，相对安全
+- cookie：主要存放在客户端，并且不是很安全
+- sessionStorage：仅在当前会话下有效，关闭页面或浏览器后被清除
+- localStorage：除非被清除，否则永久保存（经常用来存储 JWT 生成的 Token）
+
+
+
+## JWT 简介
+
+### 什么是 JWT？
+
+- JSON Web Token 是一个开发标准（RFC 7519）
+- 定义了一种紧凑且独立的方式，可以将各方之间的信息作为 JSON 对象进行安全传输
+- 该信息可以验证和信任，因为是经过数字签名的
+
+### JWT 的构成
+
+- 头部（Header）
+- 有效载荷（Payload）
+- 签名（Signature）
+
+### JWT 的例子
+
+```json
+eyJhbGci0iJIUzI1NiIsInR5cCI6IkpXVCJ9.
+eyJzdWIi0iIxMjMNTY30DkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaXNTb2NpYWwiOnRydWVg.
+4pcPyMD89olPSyXnrXCjTwXyr4BsezdI1AVTmud2fU4
+```
+
+- 注：使用 base64 编码过
+
+#### Header-头部
+
+- typ：token 的类型，这里固定为 JWT
+- alg：使用的 hash 算法，例如：HMAC SHA256 或者 RSA
+- 编码前后
+  - `{"alg":"HS256" , "typ":"JWT"}`
+  - `'eyJhbGciOiAiSFMyNTYiLCAidHlwljogIkpXVCJ9'`
+
+#### Payload-有效载荷
+
+- 存储需要传递的信息，如用户 ID、用户名等
+- 还包含元数据，如过期实践、发布人等
+- 与 Header 不同，Payload 可以加密
+- 编码前后（base64url 编码会忽略最后的等号）
+  - `{"user_id":"zhangsan"}`
+  - `'eyJ1c2VyX2lkIjoiemhhbmdzYW4ifQ=='`
+  - `'eyJ1c2VyX2lkIjoiemhhbmdzYW4ifQ'`
+
+### Signature-签名
+
+- 对 Header 和 Payload 部分进行签名
+- 保证 Token 在传输的过程中没有被篡改或者损坏
+- **Signatrue 算法**
+  - `Signature = HMACSHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload),secret)`
+
+### JWT 工作原理
+
+![1602408446136](assets/1602408446136.png)
+
+- 客户端发送 `POST` 请求并且携带用户名和密码给服务端；
+- 服务端对用户名和密码进行核对，核对成功后，将用户 id 等其他用户信息作为 JWT 的**有效载荷 Payload**，将 其与头部进行 base64 编码后形成了一个 JWT，服务端将其作为登录成功请求的返回结果返回给客户端；
+- 客户端则会把该 JWT 储存在 `LocalStorage`或者 `SessionStorage` 中；
+- 此后，客户端所有的请求都会把 JWT 字符串（`Authorization: Bearer ...JWT...`）发送给服务器端；
+- 服务器检查该其是否存在，如果存在则验证 JWT 字符串的有效性（例如：检查签名是否正确，令牌是否过期等），验证通过后，服务器则解析并使用 JWT 中包含的用户信息进行相应的逻辑处理，并且返回相应的结果。
+- 注：一旦用户注销，令牌将在客户端被销毁，不需要与服务器进行交互，关键是令牌是无状态的。服务器不需要保存令牌或当前 session 的记录。
+
+## JWT vs Session
+
+### 可拓展性
+
+### 安全性
+
+## 在 Node.js 中使用 JWT
+
+### 操作步骤
+
+- 安装 jsonwebtoken
+- 签名
+- 验证
+
+### 示例
+
+```js
+> jwt = require('jsonwebtoken');
+{ decode: [Function],
+  verify: [Function],
+  sign: [Function],
+  JsonWebTokenError: [Function: JsonWebTokenError],
+  NotBeforeError: [Function: NotBeforeError],
+  TokenExpiredError: [Function: TokenExpiredError] }
+> token = jwt.sign({name: 'enoo'},'secret');
+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZW5vbyIsImlhdCI6MTYwNDg1MjAxMH0.zIJ3Yb9UTPjMCWr0Xu6iRmaqOA6ZIZxVcUTNrouK7Wc'        
+> jwt.decode(token);
+{ name: 'enoo', iat: 1604852010 }
+> jwt.verify(token,'secret');
+{ name: 'enoo', iat: 1604852010 }
+> jwt.verify(token,'secret1');	  // 密钥错误
+Thrown:
+{ JsonWebTokenError: invalid signature
+    at E:\GitHub\ZhiHu-API\project\node_modules\jsonwebtoken\verify.js:133:19
+    at getSecret (E:\GitHub\ZhiHu-API\project\node_modules\jsonwebtoken\verify.js:90:14)
+    at Object.module.exports [as verify] (E:\GitHub\ZhiHu-API\project\node_modules\jsonwebtoken\verify.js:94:10) name: 'JsonWebTokenError', message: 'invalid signature' }
+> jwt.verify(token.replace('e','a'),'secret1'); // token 不一致
+Thrown:
+{ JsonWebTokenError: invalid token
+    at Object.module.exports [as verify] (E:\GitHub\ZhiHu-API\project\node_modules\jsonwebtoken\verify.js:75:17) name: 'JsonWebTokenError', message: 'invalid token' }
+>
+```
+
+## 实现用户注册
+
+### 操作步骤
+
+- 设计用户 Schema
+
+- 编写保证唯一性的逻辑
+
+### 示例
+
+`./models/users.js`
+
+  ```js
+// 生成文档 Schema，定义一个模式
+const userSchema = new Schema({
+    name: { type: String, required: true },
+    password: {type: String, required: true, select: false},
+});
+  ```
+
+- `select`：选择隐藏，在 `find` 查询时可以加上 `.select('+password')`
+
+`./controllers/user.js`
+
+```JS
+// 创建用户，唯一性检验
+const repeatedUser = await User.findOne({name});
+// 409，冲突
+if(repeatedUser) { ctx.throw(409, '用户已经存在'); } 
+```
+
+- `findOne`：查询到第一个就返回
+
+## 实现登录并获取 Token
+
+### 操作步骤
+
+- 登录接口设计
+- 用 jsonwebtoken 生成 token
+
+### 示例
+
+`./routes/user.js`
+
+```js
+// 6、用户登录
+router.post('/login',login);
+```
+
+`./controllers/users.js`
+
+```js
+const jsonwebtoken = require('jsonwebtoken');
+const { secret } = require('../config');        // 引入 token 密钥
+// ............
+async login(ctx){
+    ctx.verifyParams({
+        name: { type: 'string', required: true },
+        password: { type: 'string', required: true }
+    });
+    // 校验用户名密码
+    const user = await User.findOne(ctx.request.body);
+    if (!user) { ctx.throw(401, '用户名或密码不正确'); }
+    // 生成 token
+    const { _id, name } = user;
+    const token = jsonwebtoken.sign({ _id, name }, secret, { expiresIn: '1d' });
+    ctx.body = { token };
+}
+```
+
+## 编写 koa 中间件实现用户认证与授权
+
+### 操作步骤
+
+- 认证：验证 token，并获取用户信息（auth 中间件）
+  - 客户端将 token 写在请求头中，格式：
+    - `{ Authorization: Bearer token}` 
+- 授权：使用中间件保护接口  
+
+### 示例
+
+`./routes/users.js`
+
+```js
+// 认证中间件
+const auth = async (ctx, next) => {
+    // header 把请求头都改变为小写，当没有 token 请求头，则默认为空，反正报错
+    const { authorization = '' } = ctx.request.header;
+    // { Authorization: Bearer token}
+    const token = authorization.replace('Bearer ','');
+    try{
+        // 报错：token 被篡改或者为空，属于 401 错误：未认证错误。
+        const user = jsonwebtoken.verify(token, secret);
+        // 用于存储用户信息
+        ctx.state.user =  user;
+    }catch(err){
+        ctx.throw(401, err.message);
+    }
+    // 执行后续中间件
+    await next();
+}
+
+//.....
+
+// 4、修改用户，需认证（auth）—> 授权（checkOwner）
+router.patch('/:id', auth, checkOwner,updated);
+// 5、删除用户，需认证（auth）—> 授权（checkOwner）
+router.delete('/:id', auth, checkOwner, del);
+```
+
+`./controllers/users.js`
+
+```
+    // 授权
+    async checkOwner(ctx, next){
+        // 用户只能删除自己
+        // 403 Forbidden，没有权限访问
+        if(ctx.params.id !== ctx.state.user._id){
+            ctx.throw( ctx.throw(403, '没有权限'));
+        }
+        await next();
+    }
+```
+
+
+
+# 项目问题解决
+
+## findOneAndUpdate() 问题
+
+```js
+(node:12668) DeprecationWarning: Mongoose: `findOneAndUpdate()` and `findOneAndDelete()` without the `useFindAndModify` option set to 
+false are deprecated. See: https://mongoosejs.com/docs/deprecations.html#findandmodify
+```
+
+- **警告：**Mongoose:不推荐使用未将“useFindAndModify”选项设置为false的“FindAndDupDate（）”和“FindAndDelete（）”。
+
+- 使用mongoose的findOneAndUpdate、FindAndDelete两个方法，返回的数据是未更新的数据，但是库里的数据已经更新了；
+
+# 注意点
+
+- 将敏感信息放在**"隐藏"**文件中，写入环境变量，通过环境变量来获取
+
+- PostMan 调试：可以将 token 保存到软件的全局变量，使用的时候直接取
+
+  - 自动化脚本：
+
+    ```js
+    var jsonData = pm.response.json();
+    pm.globals.set("token", jsonData.token);
+    ```
+
+    
