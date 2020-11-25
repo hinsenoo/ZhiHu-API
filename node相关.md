@@ -1225,16 +1225,108 @@ router.delete('/:id', auth, checkOwner, del);
 
 `./controllers/users.js`
 
-```
-    // 授权
-    async checkOwner(ctx, next){
-        // 用户只能删除自己
-        // 403 Forbidden，没有权限访问
-        if(ctx.params.id !== ctx.state.user._id){
-            ctx.throw( ctx.throw(403, '没有权限'));
-        }
-        await next();
+```js
+// 授权
+async checkOwner(ctx, next){
+    // 用户只能删除自己
+    // 403 Forbidden，没有权限访问
+    if(ctx.params.id !== ctx.state.user._id){
+        ctx.throw( ctx.throw(403, '没有权限'));
     }
+    await next();
+}
+```
+
+## 用 koa-jwt 中间件实现用户认证与授权
+
+### 操作步骤
+
+- 安装 koa-jwt
+- 使用中间件保护接口
+- 使用中间件获取用户信息
+
+## 上传图片需求分析
+
+### 上传图片需求场景
+
+- 用户头像
+- 封面图片
+- 问题和回答中的图片
+- 话题图片
+
+### 上传图片的功能点
+
+- 基础功能：上传图片、生成图片链接
+- 附加功能：限制上传图片的大小与类型、生成高中低三种分辨率的图片链接、生成 CDN
+
+### 上传图片的技术方案
+
+- 阿里云 OSS 等云服务，推荐在生产环境下使用
+- 直接上传到服务器，不推荐在生产环境下中使用
+- 免费七牛云
+
+## 使用 koa-body 中间件获取上传的文件
+
+### 操作步骤
+
+- 安装 `koa-body`，替换 `koa-bodyparser`
+  - `koa-boydparser` 只支持 JSON 和 form 两种格式的请求体，不支持文件格式
+- 设置图片上传目录
+- 使用 Postman 上传文件
+
+### 示例
+
+`./index.js` 注册解析中间件——`koaBody`
+
+```js
+const koaBody = require('koa-body');
+const path = require('path');
+
+// ....
+
+// 注册请求体解析中间件——koaBody
+app.use(koaBody({
+    multipart: true,    // 启用文件格式
+    formidable: {
+        // __dirname 当前目录下
+        uploadDir: path.join(__dirname, '/public/uploads'), // 文件上传路径
+        keepExtensions: true,   // 保留扩展名
+    }
+}));
+```
+
+`./controllers/home.js` `upload` 方法
+
+```js
+upload(ctx) {
+    const file = ctx.request.files.file;
+    ctx.body = { path: file.path };
+}
+```
+
+`./routes/home.js`
+
+```js
+router.post('/upload', upload);
+```
+
+## 使用 koa-static 中间件生产图片链接
+
+### 操作步骤
+
+- 安装 koa-static
+- 设置静态文件目录
+- 生成图片链接
+
+### 示例
+
+`./index.js` koa-static 的引入及配置使用
+
+```js
+const koaStatic = require('koa-static');
+// ......
+// koa-static 静态资源管理
+app.use(koaStatic(path.join(__dirname, 'public')));
 ```
 
 
