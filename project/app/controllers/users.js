@@ -43,8 +43,17 @@ class UsersCtl {
     // 4、修改用户
     async updated(ctx) {
         ctx.verifyParams({
-            name: {type: 'string', required: false},
-            password: { type: 'string', required: false},
+            name: {type: 'string', required: false },
+            password: { type: 'string', required: false },
+            avatar_url: { type: 'string', required: false },
+            gender: { type: 'string', required: false },
+            headline: { type: 'string', required: false },
+            // itemType 表示数组中的类型，注意区别于 mongoose 的写法
+            locations: { type: 'array', itemType: 'string', required: false },
+            business: { type: 'string', required: false }, // 行业
+            employment: { type: 'array', itemType: 'object', required: false }, 
+            educations: { type: 'array', itemType: 'object', required: false }, 
+            
         });
         const user = await User.findOneAndUpdate('5faa55da62e3563f0c3595ff', ctx.request.body);
         if(!user) { ctx.throw(404, '用户不存在'); }

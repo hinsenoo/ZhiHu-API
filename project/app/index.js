@@ -40,6 +40,6 @@ app.use(paramter(app));
 // 批量读取注册路由
 routing(app);
 
-app.listen(3000, () => console.log('程序启动在 3000 端口'));
+app.listen(3001, () => console.log('程序启动在 3001 端口'));
 
 

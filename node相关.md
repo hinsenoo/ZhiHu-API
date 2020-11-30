@@ -1329,7 +1329,103 @@ const koaStatic = require('koa-static');
 app.use(koaStatic(path.join(__dirname, 'public')));
 ```
 
+`./controllers/home.js`
 
+```js
+const path = require('path');
+class HomeCtl {
+    index(ctx) {
+        ctx.body = '这是主页';
+    }
+    upload(ctx) {
+        const file = ctx.request.files.file;
+        // 使用 path.basename 方法返回最后一部分的文件名及拓展名
+        const basename = path.basename(file.path);
+        ctx.body = { url: `${ctx.origin}/uploads/${basename}` };
+    }
+}
+```
+
+
+
+## 编写前端页面上传文件
+
+### 操作步骤
+
+- 编写上传文件的前端页面
+- 与后端接口联调测试  
+
+### 示例
+
+```js
+<form action="/upload" enctype="multipart/form-data" method="POST">
+   <input type="file" name="file" accept="image/*">
+   <button type="submit">上传</button>
+</form>
+```
+
+## 个人资料需求分析
+
+### 个人资料功能点
+
+- 不同类型（如字符串、数组）的属性
+- 字段过滤
+
+## 个人资料的 schema 设计
+
+### 操作步骤
+
+- 分析个人资料的数据结构
+- 设计个人资料的 schema
+
+### 示例
+
+`./models/users.js`
+
+```js
+// 生成文档 Schema，定义一个模式
+const userSchema = new Schema({
+    __v: {type: Number, select: false},
+    name: { type: String, required: true },
+    password: {type: String, required: true, select: false},
+    // 用户头像
+    avatar_url: { type: String },
+    // enum 描述可枚举，从指定字段中返回
+    gender: { type: String, enum: ['male', 'famale'], default: 'male', required: true },
+    // 一句话介绍
+    headline: { type: String },
+    // 居住地，数组
+    location: { type: [{ type: String }] },
+    // 行业
+    business: { type: String },
+    // 职业经历，多个对象字段
+    employments: { 
+        type: [{
+            company: { type: String },
+            job: { type: String },
+        }],
+    },
+    // 教育经历
+    educations: {
+        type: [{
+            school: { type: String },
+            major: { type: String },
+            diploma: { type: Number, enum: [1, 2, 3, 4, 5] },       // 学历
+            entrance_year: { type: Number }, // 入学年份
+            graduation_year: { type: Number }, // 毕业年份
+        }]
+    }
+});
+```
+
+## 个人资料的参数校验
+
+### 操作步骤
+
+- 分析个人资料的数据结构
+- 编写代码校验个人资料参数（更新接口）
+- 使用 Postman 测试
+- 
 
 # 项目问题解决
 
