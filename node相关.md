@@ -1425,7 +1425,448 @@ const userSchema = new Schema({
 - 分析个人资料的数据结构
 - 编写代码校验个人资料参数（更新接口）
 - 使用 Postman 测试
-- 
+
+### 示例
+
+`./controllers/users.js`
+
+```js
+// 4、修改用户
+async updated(ctx) {
+    ctx.verifyParams({
+        name: {type: 'string', required: false },
+        password: { type: 'string', required: false },
+        avatar_url: { type: 'string', required: false },
+        gender: { type: 'string', required: false },
+        headline: { type: 'string', required: false },
+        // itemType 表示数组中的类型，注意区别于 mongoose 的写法
+        locations: { type: 'array', itemType: 'string', required: false },
+        business: { type: 'string', required: false }, // 行业
+        employment: { type: 'array', itemType: 'object', required: false }, 
+        educations: { type: 'array', itemType: 'object', required: false }, 
+
+    });
+    const user = await User.findByIdAndUpdate( ctx.params.id, ctx.request.body);
+    // console.log(ctx.params, user);
+    if(!user) { ctx.throw(404, '用户不存在'); }
+    ctx.body = user;
+}
+```
+
+## 字段过滤——Restful API 最佳实践
+
+### 操作步骤
+
+- 设计 schema 默认隐藏部分字段
+- 通过查询字符串显示隐藏字段（`fields`
+- 使用 Postman 测试
+
+### 示例
+
+`./models/users.js` 设计 schema 默认隐藏部分字段
+
+```js
+// 生成文档 Schema，定义一个模式
+const userSchema = new Schema({
+    __v: {type: Number, select: false},
+    name: { type: String, required: true },
+    password: {type: String, required: true, select: false},
+    // 用户头像
+    avatar_url: { type: String },
+    // enum 描述可枚举，从指定字段中返回
+    gender: { type: String, enum: ['male', 'famale'], default: 'male', required: true },
+    // 一句话介绍
+    headline: { type: String },
+    // 居住地，数组
+    locations: { type: [{ type: String }], select: false},
+    // 行业
+    business: { type: String, select: false },
+    // 职业经历，多个对象字段
+    employments: { 
+        type: [{
+            company: { type: String },
+            job: { type: String },
+        }],
+        select: false
+    },
+    // 教育经历
+    educations: {
+        type: [{
+            school: { type: String },
+            major: { type: String },
+            diploma: { type: Number, enum: [1, 2, 3, 4, 5] },       // 学历
+            entrance_year: { type: Number }, // 入学年份
+            graduation_year: { type: Number }, // 毕业年份
+        }],
+        select: false
+    }
+});
+```
+
+`./controllers/users.js` 通过查询字符串（fields）显示隐藏字段
+
+```js
+// 2、获取
+async findById(ctx) {
+    // 获取查询字符串种的字段
+    const { fields } = ctx.query;
+    // split 分隔为数组  filter 过滤不存在的字段 map 对数组进行遍历 join 拼接成字符串
+    const selectFields = fields.split(';').filter(f => f).map(f => ' +' + f).join('');
+    // console.log(fields, selectFields);
+    const user = await User.findById(ctx.params.id).select(selectFields);
+    if(!user) { ctx.throw(404, '用户不存在'); }
+    ctx.body = user;
+}
+```
+
+## 关注与粉丝需求分析
+
+### 细化关注与粉丝功能点
+
+- 关注、取消关注 
+- 获取关注人、粉丝列表（用户-用户多对多关系）
+
+## 关注与粉丝的 schema 设计
+
+### 操作步骤
+
+- 分析关注与粉丝的数据结构
+- 设计关注与粉丝 schema  
+
+### 示例
+
+`./models/users.js`
+
+```js
+// 关注列表
+following: {
+    // 存储用户 id，使用 mongoose 提供的特殊类型
+    // Schema.Types.ObjectId ,  
+    // ref：引用的简写，将 ObjectId 与 schema 关联起来
+    // 关联着 User 中的 id -> User id
+    type: [{ type: Schema.Types.ObjectId, ref: 'User'}],
+    select: false,
+}
+```
+
+## 关注与粉丝接口——RESTful 风格
+
+### 操作步骤
+
+- 实现获取关注者 和粉丝列表接口
+- 实现关注和取消关注接口
+- 使用 Postman 测试
+
+### 示例
+
+`./controllers/users.js`
+
+```js
+// 7. 获取关注者接口
+async listFollowing(ctx) {
+    // 获取关注者的具体信息，通过 populate 获取关联 Schema 的 ObjectId 的信息
+    const user = await User.findById(ctx.params.id).select('+following').populate('following');
+    if (!user) { ctx.throw(404); }
+    ctx.body = user.following; 
+}
+// 8、获取粉丝列表接口
+async listFollowers(ctx) {
+    // 查询用户列表中的关注列表，包含查询用户的 id，即为用户的粉丝
+    const user = await User.find( { following: ctx.params.id });
+    ctx.body = user;
+}
+// 9、关注
+async follow(ctx) {
+    const me = await User.findById(ctx.state.user._id).select('+following');
+    // 不可关注自己
+    if (ctx.params.id == ctx.state.user._id) { return }
+    // 判断是否已经关注,
+    // 将关注列表的 id 转为字符串（原本为 mongoose 自带的特殊类型）    
+    if (!me.following.map(id => id.toString()).includes(ctx.params.id)) {
+        // 未关注
+        me.following.push(ctx.params.id);
+        // 保存到数据库
+        me.save();
+    }
+    // 成功状态，但是不返回内容
+    ctx.status = 204;
+}
+// 10、取关
+async unfollow(ctx) {
+    const me = await User.findById(ctx.state.user._id).select('+following');
+    // 获取取消关注的人在关注列表中的索引
+    const index = me.following.map(id => id.toString()).indexOf(ctx.params.id);
+    if (index > -1) {
+        // 移除指定的参数
+        me.following.splice(index, 1);
+        me.save();
+    }
+    ctx.status = 204;
+}
+```
+
+`./routes/users.js`
+
+```js
+// 7、用户关注者列表，嵌套关系
+router.get('/:id/following', listFollowing);
+// 8、用户粉丝列表，嵌套关系
+router.get('/:id/followers', listFollowers);
+// 9、关注
+router.put('/following/:id', auth, follow);
+// 10、取关
+router.delete('/following/:id', auth, unfollow);
+```
+
+## 编写校验用户存在与否的中间件
+
+### 操作步骤
+
+- 编写校验用户存在与否的中间件
+- 使用 Postman 测试‘
+
+### 示例
+
+`./controllers/users.js`
+
+```js
+ // 检查用户存在与否 中间件
+async checkUserExist(ctx, next) {
+    const user = await User.findById(ctx.params.id);
+    if (!user) { ctx.throw(404, '用户不存在'); }
+    // 执行后续中间件
+    await next();
+}
+```
+
+## 话题模块需求分析
+
+#### 话题模块功能点
+
+- 话题的增改查
+- 分页、模糊搜索
+- 用户属性中的话题引用
+- 关注 / 取消关注话题、用户关注的话题列表
+
+## 话题增改查接口——RESTful 风格
+
+### 操作步骤
+
+- 设计 Schema
+- 实现 RESTful 风格的增改查接口
+
+- 使用 Postman 测试
+
+### 示例
+
+`./models/topics.js`
+
+```js
+const mongoose = require('mongoose');
+
+const { Schema, model } = mongoose;
+
+// 生成文档 Schema，定义一个模式
+const topicSchema = new Schema({
+    __v: { type: Number, select: false },
+    name: { type: String, required: true },
+    avatar_url: { type: String },
+    // 获取话题简介
+    introduction: { type: String, select: false },
+});
+
+// 创建用户模型，使用模式“编译”模型
+module.exports = model('Topic', topicSchema);
+```
+
+`./controllers/topics.js`
+
+```js
+const Topic = require('../models/topics');        // 话题模型
+
+class TopicCtl {
+    async find(ctx) {
+        ctx.body = await Topic.find();
+    }
+    async findById(ctx) {
+        // 默认值为空字符串
+        const { fields = '' } = ctx.query;
+        const selectFields = fields.split(';').filter(f => f).map(f => ' +' + f).join('');
+        const topic = await Topic.findById(ctx.params.id).select(selectFields);
+        ctx.body = topic;
+    }
+    async create(ctx) {
+        ctx.verifyParams({
+            name: { type: 'string', required: true },
+            avatar_url: { type: 'string', required: false },
+            introduction: { type: 'string', required: false },
+        });
+        const topic = await new Topic(ctx.request.body).save();
+        ctx.body = topic;
+    }
+    async update(ctx) {
+        ctx.verifyParams({
+            name: { type: 'string', required: false },
+            avatar_url: { type: 'string', required: false },
+            introduction: { type: 'string', required: false },
+        });
+        // 返回的是更新前的数据
+        const topic = await Topic.findByIdAndUpdate(ctx.params.id, ctx.request.body);
+        ctx.body = topic;
+    }
+}
+
+module.exports = new TopicCtl;
+```
+
+`./routes/topics.js`
+
+```js
+const jwt = require('koa-jwt');
+// 用户路由
+const Router = require('koa-router');
+// 前缀写法
+const router = new Router({prefix: '/topics'});
+const { find, findById, create, update } = require('../controllers/topics');
+
+const { secret } = require('../config');
+
+// 认证中间件
+const auth = jwt({ secret });
+
+router.get('/', find);
+router.post('/', auth,create);
+router.get('/:id', findById);
+router.patch('/:id', auth,update);
+
+module.exports = router;
+```
+
+## 分页——RESTful API 最佳实践
+
+### 操作步骤
+
+- 实现分页逻辑
+- 使用 Postman 测试
+
+### 示例
+
+`./controllers/topics.js` 获取话题列表分页功能
+
+```js
+async find(ctx) {
+    // 若无指定数量，默认 perPage 为 10
+    const { per_page = 3 } = ctx.query;
+    // 确保最低为 0，防止传入 -1 0
+    const page = Math.max(ctx.query.page * 1, 1) - 1;
+    // 确保最低为 1，防止传入 -1 0
+    const perPage = Math.max(per_page * 1, 1);
+    // limit 返回x项，skip 跳过几项开始返回
+    ctx.body = await Topic.find().limit(perPage).skip(page * perPage);
+}
+```
+
+`./controllers/user.js`获取用户列表分页功能，同理如上
+
+## 模糊搜索——RESTful API 最佳实践
+
+### 操作步骤
+
+- 实现模糊搜索逻辑
+- 使用 Postman 测试逻辑
+
+### 示例
+
+`./controllers/topics.js`
+
+```js
+// ...
+    // 模糊搜索：使用正则表达式匹配
+    ctx.body = await Topic
+        .find({ name: new RegExp(ctx.query.q) })
+        .limit(perPage).skip(page * perPage);
+```
+
+## 用户属性中的话题引用
+
+### 操作步骤
+
+- 使用话题引用替代部分用户属性
+
+### 示例
+
+`./models/users.js` 设置用户模型关联话题
+
+```js
+// ... 
+locations: { type: [{ type: Schema.Types.ObjectId, ref: 'Topic' }], select: false},
+    // 行业
+    business: { type: Schema.Types.ObjectId, ref: 'Topic', select: false },
+    // 职业经历，多个对象字段
+    employments: { 
+        type: [{
+            company: { type: Schema.Types.ObjectId, ref: 'Topic' },
+            job: { type: Schema.Types.ObjectId, ref: 'Topic' },
+        }],
+        select: false
+    },
+    // 教育经历
+    educations: {
+        type: [{
+            school: { type: Schema.Types.ObjectId, ref: 'Topic' },
+            major: { type: Schema.Types.ObjectId, ref: 'Topic' },
+            diploma: { type: Number, enum: [1, 2, 3, 4, 5] },       // 学历
+            entrance_year: { type: Number }, // 入学年份
+            graduation_year: { type: Number }, // 毕业年份
+        }],
+        select: false
+    },
+    // 关注列表
+    following: {
+        // 存储用户 id，使用 mongoose 提供的特殊类型
+        // Schema.Types.ObjectId ,  
+        // ref：引用的简写，将 ObjectId 与 schema 关联起来
+        // 关联着 User 中的 id -> User id
+        type: [{ type: Schema.Types.ObjectId, ref: 'User'}],
+        select: false,
+    }
+// ...
+```
+
+`./controllers/users.js` 设置查询时关联字段
+
+```js
+// 2、获取用户列表
+    async findById(ctx) {
+        // 获取查询字符串种的字段
+        const { fields = '' } = ctx.query;
+        // split 分隔为数组  filter 过滤不存在的字段 map 对数组进行遍历 join 拼接成字符串
+        const selectFields = fields.split(';').filter(f => f).map(f => ' +' + f).join('');
+        // populate 也需要动态获取，否则无法隐藏
+        const populateStr = fields.split(';').filter(f => f).map(f => {
+            if (f === 'employments') {
+                return 'employments.company employments.job';
+            }
+            if (f === 'educations') {
+                return 'educations.school educations.major';
+            }
+            return f;
+        }).join(' ');
+        // console.log(fields, selectFields);
+        const user = await User
+            .findById(ctx.params.id)
+            .select(selectFields)
+            .populate(populateStr);
+        if (!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user;
+    }
+```
+
+## 关注话题接口——RESTful API 风格的关注接口
+
+### 操作步骤
+
+- 实现关注话题逻辑（用户-话题多对多关系）
 
 # 项目问题解决
 
@@ -1453,4 +1894,4 @@ false are deprecated. See: https://mongoosejs.com/docs/deprecations.html#findand
     pm.globals.set("token", jsonData.token);
     ```
 
-    
+-  用于存储用户信息  `ctx.state.user =  user;`

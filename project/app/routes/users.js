@@ -3,7 +3,13 @@ const jwt = require('koa-jwt');
 const Router = require('koa-router');
 // 前缀写法
 const router = new Router({prefix: '/users'});
-const {find,findById,created,updated, delete: del, login, checkOwner } = require('../controllers/users');
+const { find,findById,create,update, delete: del, 
+        login, checkOwner, listFollowing, listFollowers, 
+        checkUserExist, follow, unfollow,
+        listFollowingTopics,followTopic,unfollowTopic 
+} = require('../controllers/users');
+
+const { checkTopicExist } = require('../controllers/topics');
 
 const { secret } = require('../config');
 
@@ -34,14 +40,28 @@ const db = [{ name: "李雷" }];
 // 1、获取用户列表
 router.get('/', find);
 // 2、新建用户
-router.post('/', created);
+router.post('/', create);
 // 3、获取用户
 router.get('/:id', findById);
 // 4、修改用户，需认证（auth）—> 授权（checkOwner）
-router.patch('/:id', auth, checkOwner,updated);
+router.patch('/:id', auth, checkOwner,update);
 // 5、删除用户，需认证（auth）—> 授权（checkOwner）
 router.delete('/:id', auth, checkOwner, del);
 // 6、用户登录
 router.post('/login',login);
+// 7、用户关注者列表，嵌套关系
+router.get('/:id/following', listFollowing);
+// 8、用户粉丝列表，嵌套关系
+router.get('/:id/followers', listFollowers);
+// 9、关注用户
+router.put('/following/:id', auth, checkUserExist, follow);
+// 10、取关用户
+router.delete('/following/:id', auth, checkUserExist, unfollow);
+// 11、用户关注者列表，嵌套关系
+router.get('/:id/followingTopics', listFollowingTopics);
+// 12、关注话题
+router.put('/followingTopic/:id', auth, checkTopicExist, followTopic);
+// 13、取关话题
+router.delete('/followingTopic/:id', auth, checkTopicExist, unfollowTopic);
 
 module.exports = router;
