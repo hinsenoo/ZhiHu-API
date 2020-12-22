@@ -6,7 +6,7 @@ const router = new Router({prefix: '/users'});
 const { find,findById,create,update, delete: del, 
         login, checkOwner, listFollowing, listFollowers, 
         checkUserExist, follow, unfollow,
-        listFollowingTopics,followTopic,unfollowTopic 
+        listFollowingTopics,followTopic,unfollowTopic, listQuestions 
 } = require('../controllers/users');
 
 const { checkTopicExist } = require('../controllers/topics');
@@ -63,5 +63,7 @@ router.get('/:id/followingTopics', listFollowingTopics);
 router.put('/followingTopic/:id', auth, checkTopicExist, followTopic);
 // 13、取关话题
 router.delete('/followingTopic/:id', auth, checkTopicExist, unfollowTopic);
+// 14、问题列表
+router.get('/:id/questions', listQuestions);
 
 module.exports = router;

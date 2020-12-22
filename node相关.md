@@ -1867,6 +1867,268 @@ locations: { type: [{ type: Schema.Types.ObjectId, ref: 'Topic' }], select: fals
 ### 操作步骤
 
 - 实现关注话题逻辑（用户-话题多对多关系）
+- 使用 Postman 测试
+
+### 示例
+
+`./controllers/users.js`
+
+```js
+	// 11、获取关注的话题
+    async listFollowingTopics(ctx) {
+        const user = await User.findById(ctx.params.id).select('+followingTopics').populate('followingTopics');
+        if (!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user.followingTopics;
+    }
+    // 12、关注话题
+    async followTopic(ctx) {
+        const me = await User.findById(ctx.state.user._id).select('+followingTopics');
+        if (!me.followingTopics.map(id => id.toString()).includes(ctx.params.id)) {
+            me.followingTopics.push(ctx.params.id);
+            me.save();
+        }
+        ctx.status = 204;
+    }
+    // 13、取关话题
+    async unfollowTopic(ctx) {
+        const me = await User.findById(ctx.state.user._id).select('+followingTopics');
+        const index = me.followingTopics.map(id => id.toString()).indexOf(ctx.params.id);
+        if (index > -1) {
+            me.followingTopics.splice(index, 1);
+            me.save();
+        }
+        ctx.status = 204;
+    }
+```
+
+`./controllers/topics.js` 话题存在检验中间件
+
+```js
+	// 检查话题是否存在 中间件
+    async checkTopicExist(ctx, next) {
+        const topic = await Topic.findById(ctx.params.id);
+        if (!topic) { ctx.throw(404, '用户不存在'); }
+        // 执行后续中间件
+        await next();
+    }
+    // 获取话题粉丝列表接口
+    async listTopicFollowers(ctx) {
+        const user = await User.find({ followingTopics: ctx.params.id });
+        ctx.body = user;
+    }
+```
+
+`./routes/users.js`
+
+```js
+// 11、用户关注者列表，嵌套关系
+router.get('/:id/followingTopics', listFollowingTopics);
+// 12、关注话题
+router.put('/followingTopic/:id', auth, checkTopicExist, followTopic);
+// 13、取关话题
+router.delete('/followingTopic/:id', auth, checkTopicExist, unfollowTopic);
+```
+
+## 问题模块需求分析
+
+### 问题模块功能点
+
+- 问题的增删改查
+- 用户的问题列表（用户-问题一对多关系）
+- 话题的问题列表 +  问题的话题列表（话题-问题多对多关系）
+- 关注/取消关注问题
+
+## 用户-问题一对多关系设计与实现
+
+### 操作步骤
+
+- 实现增删改查接口
+- 实现用户的问题列表接口
+
+### 示例
+
+`./models/questions.js`
+
+```js
+const mongoose = require('mongoose');
+
+const { Schema, model } = mongoose;
+
+// 生成文档 Schema，定义一个模式
+const questionsSchema = new Schema({
+    __v: { type: Number, select: false },
+    title: { type: String, required: true },
+    description: { type: String },
+    questioner: { type: Schema.Types.ObjectId, ref: 'User', required: true, select: false },
+});
+
+// 使用模式“编译”模型
+module.exports = model('Question', questionsSchema);
+```
+
+`./controllers/questions.js`
+
+```js
+const Question = require('../models/questions'); 
+
+class QuestionCtl {
+    async find(ctx) {
+        // 若无指定数量，默认 perPage 为 10
+        const { per_page = 10 } = ctx.query;
+        // 确保最低为 0，防止传入 -1 0
+        const page = Math.max(ctx.query.page * 1, 1) - 1;
+        // 确保最低为 1，防止传入 -1 0
+        const perPage = Math.max(per_page * 1, 1);
+        const q = new RegExp(ctx.query.q);
+        // $or 匹配任意一项都能命中，匹配标题或者描述
+        ctx.body = await Question
+            .find({ $or: [ { title: q }, { description: q } ] })
+            .limit(perPage).skip(page * perPage);
+    }
+    // 检查问题是否存在 中间件
+    async checkQuestionExist(ctx, next) {
+        const question = await Question.findById(ctx.params.id).select('+questioner');
+        if (!question) { ctx.throw(404, '问题不存在'); }
+        // 存储问题，减少重复查询
+        ctx.state.question = question;
+        // 执行后续中间件
+        await next();
+    }
+    async findById(ctx) {
+        // 默认值为空字符串
+        const { fields = '' } = ctx.query;
+        const selectFields = fields.split(';').filter(f => f).map(f => ' +' + f).join('');
+        const question = await Question.findById(ctx.params.id).select(selectFields).populate('questioner');
+        ctx.body = question;
+    }
+    async create(ctx) {
+        ctx.verifyParams({
+            title: { type: 'string', required: true },
+            description: { type: 'string', required: false },
+        });
+        const question = await new Question({ ...ctx.request.body, questioner: ctx.state.user._id }).save();
+        ctx.body = question;
+    }
+    async checkQuestioner(ctx, next) {
+        const { question } = ctx.state;
+        if (question.questioner.toString() !== ctx.state.user._id ) {
+            ctx.throw(403, '没有权限');
+        }
+        await next();
+    }
+    async update(ctx) {
+        ctx.verifyParams({
+            title: { type: 'string', required: false },
+            description: { type: 'string', required: false },
+        });
+        // 返回的是更新前的数据
+        await ctx.state.question.updateOne(ctx.request.body);
+        ctx.body = ctx.state.question;
+    }
+    async delete(ctx) {
+        await Question.findByIdAndRemove(ctx.params.id);
+        ctx.status = 204;
+    }
+}
+
+module.exports = new QuestionCtl;
+```
+
+`./controllers/users.js`
+
+```js
+	// 14. 列出问题
+    async listQuestions(ctx) {
+        const questions = await Question.find({ questioner: ctx.params.id });
+        ctx.body = questions;
+    }
+```
+
+`./routes/questions.js`
+
+```js
+const jwt = require('koa-jwt');
+// 用户路由
+const Router = require('koa-router');
+// 前缀写法
+const router = new Router({prefix: '/questions'});
+const { find, findById, create, update, delete: del , checkQuestionExist, checkQuestioner } = require('../controllers/questions');
+
+const { secret } = require('../config');
+
+// 认证中间件
+const auth = jwt({ secret });
+
+router.get('/', find);
+router.post('/', auth, create);
+// 有 id 的需检查是是否存在
+router.get('/:id', checkQuestionExist,findById);
+router.patch('/:id', auth, checkQuestionExist, checkQuestioner,update);
+router.delete('/:id', auth, checkQuestionExist, checkQuestioner, del);
+
+module.exports = router;
+```
+
+## 话题-问题多对多关系设计与实现
+
+### 操作步骤
+
+- 实现问题的话题列表接口
+- 实现话题的问题列表的接口
+
+### 示例
+
+`./models/questions.js` 新增话题字段，关联话题 id，形成话题-问题多对多
+
+```js
+/ 生成文档 Schema，定义一个模式
+const questionsSchema = new Schema({
+    __v: { type: Number, select: false },
+    title: { type: String, required: true },
+    description: { type: String },
+    questioner: { type: Schema.Types.ObjectId, ref: 'User', required: true, select: false },
+    // 新增
+    topics: {
+        type: [{ type: Schema.Types.ObjectId, ref: 'Topic' }],
+        select: false,
+    }
+});
+```
+
+`./controllers/topics.js`
+
+```js
+// 获取话题的问题列表
+async listQuestions(ctx) {
+    const questions = await Question.find({ topics: ctx.params.id });
+    ctx.body = questions;
+}
+```
+
+`./routes/topics.js`
+
+```js
+router.get('/:id/questions', checkTopicExist, listQuestions);
+```
+
+## 答案模块需求分析
+
+- 答案的增删改查
+- 问题-答案/用户-答案一对多
+- 赞/踩答案
+- 收藏答案
+
+## 问题-答案模块二级嵌套的增删改查接口
+
+### 操作步骤
+
+- 设计数据库 Schema（重点在于一对多关系的设计）
+- 实现增删改查接口
+- 测试
+
+### 示例
+
+
 
 # 项目问题解决
 
