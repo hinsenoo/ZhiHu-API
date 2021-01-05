@@ -2128,6 +2128,257 @@ router.get('/:id/questions', checkTopicExist, listQuestions);
 
 ### 示例
 
+`./models/answers.js` 答案 schema 设计
+
+```js
+// 生成文档 Schema，定义一个模式
+const answerSchema = new Schema({
+    __v: { type: Number, select: false },
+    content: { type: String, required: true },    // 内容
+    answerer: { type: Schema.Types.ObjectId, ref: 'User', required: true, select: false },  // 回答者
+    questionId: { type: String, required: true }, // 从属问题 id
+});
+```
+
+`./controllers/answers.js` 控制器
+
+```js
+const Answer = require('../models/answers'); 
+
+class AnswerCtl {
+    async find(ctx) {
+        // 若无指定数量，默认 perPage 为 10
+        const { per_page = 10 } = ctx.query;
+        // 确保最低为 0，防止传入 -1 0
+        const page = Math.max(ctx.query.page * 1, 1) - 1;
+        // 确保最低为 1，防止传入 -1 0
+        const perPage = Math.max(per_page * 1, 1);
+        const q = new RegExp(ctx.query.q);
+        // 查询内容是否符合某个关键字，并且精确匹配 questionId
+        ctx.body = await Answer
+            .find({ content: q, questionId: ctx.params.questionId })
+            .limit(perPage).skip(page * perPage);
+    }
+    // 检查问题是否存在 中间件
+    async checkAnswerExist(ctx, next) {
+        const answer = await Answer.findById(ctx.params.id).select('+answerer');
+        if (!answer) { ctx.throw(404, '答案不存在'); }
+        if (answer.questionId !== ctx.params.questionId) {
+            ctx.throw(404, '该问题下没有此答案');
+        }
+        // 存储问题，减少重复查询
+        ctx.state.answer = answer;
+        // 执行后续中间件
+        await next();
+    }
+    async findById(ctx) {
+        // 默认值为空字符串
+        const { fields = '' } = ctx.query;
+        const selectFields = fields.split(';').filter(f => f).map(f => ' +' + f).join('');
+        const answer = await Answer.findById(ctx.params.id).select(selectFields).populate('answerer');
+        ctx.body = answer;
+    }
+    async create(ctx) {
+        ctx.verifyParams({
+            content: { type: 'string', required: true },
+        });
+        const answerer = ctx.state.user._id;
+        const { questionId } = ctx.params;
+        const answer = await new Answer({ ...ctx.request.body, answerer, questionId }).save();
+        ctx.body = answer;
+    }
+    async checkAnswerer(ctx, next) {
+        const { answer } = ctx.state;
+        if (answer.answerer.toString() !== ctx.state.user._id ) {
+            ctx.throw(403, '没有权限');
+        }
+        await next();
+    }
+    async update(ctx) {
+        ctx.verifyParams({
+            content: { type: 'string', required: false },
+        });
+        // 返回的是更新前的数据
+        await ctx.state.answer.updateOne(ctx.request.body);
+        ctx.body = ctx.state.answer;
+    }
+    async delete(ctx) {
+        await Answer.findByIdAndRemove(ctx.params.id);
+        ctx.status = 204;
+    }
+}
+
+module.exports = new AnswerCtl;
+```
+
+`./routes/answers.js`
+
+```js
+const jwt = require('koa-jwt');
+// 用户路由
+const Router = require('koa-router');
+// 前缀写法
+const router = new Router({prefix: '/questions/:questionId/answers'});
+const { find, findById, create, update, delete: del , checkAnswerExist, checkAnswerer } = require('../controllers/answers');
+
+const { secret } = require('../config');
+
+// 认证中间件
+const auth = jwt({ secret });
+
+router.get('/', find);
+router.post('/', auth, create);
+// 有 id 的需检查是是否存在
+router.get('/:id', checkAnswerExist,findById);
+router.patch('/:id', auth, checkAnswerExist, checkAnswerer,update);
+router.delete('/:id', auth, checkAnswerExist, checkAnswerer, del);
+
+module.exports = router;
+```
+
+## 互斥关系的赞/踩答案接口设计与实现
+
+### 操作步骤
+
+- 设计数据库 Schema
+- 实现接口
+
+### 示例
+
+`./models/users.js` 新增 users  Schema 字段
+
+```js
+// ...
+	// 赞列表
+    likingAnswers: {
+        type: [{ type: Schema.Types.ObjectId, ref: 'Answer' }],
+        select: false,
+    },
+    // 踩列表
+    dislikingAnswers: {
+        type: [{ type: Schema.Types.ObjectId, ref: 'Answer' }],
+        select: false,
+    },
+// ...
+```
+
+`./controllers/user.js` 编写控制器
+
+```js
+    // 15、赞答案列表
+    async listLikingAnswers(ctx) {
+        const user = await User.findById(ctx.params.id).select('+likingAnswers').populate('likingAnswers');
+        if (!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user.likingAnswers;
+    }
+    // 16、点赞答案
+    async likeAnswer(ctx, next) {
+        const me = await User.findById(ctx.state.user._id).select('+likingAnswers');
+        // 防止重复
+        if (!me.likingAnswers.map(id => id.toString()).includes(ctx.params.id)) {
+            me.likingAnswers.push(ctx.params.id);
+            me.save();
+            // 操作符 inc：用于增加减少删除
+            await Answer.findByIdAndUpdate(ctx.params.id, { $inc: { voteCount: 1 }});
+        }
+        ctx.status = 204;
+        await next();
+    }
+    // 17、取消赞某个答案
+    async unlikeAnswer(ctx) {
+        const me = await User.findById(ctx.state.user._id).select('+likingAnswers');
+        // 获取答案在列表中的索引
+        const index = me.likingAnswers.map(id => id.toString()).indexOf(ctx.params.id);
+        // 判断是否存在
+        if (index > -1) {
+            me.likingAnswers.splice(index, 1);
+            me.save();
+            await Answer.findByIdAndUpdate(ctx.params.id, { $inc: { voteCount: -1 }});
+        }
+        ctx.status = 204;
+    }
+    // 18、踩答案列表
+    async listDislikingAnswers(ctx) {
+        const user = await User.findById(ctx.params.id).select('+dislikingAnswers').populate('dislikingAnswers');
+        if (!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user.dislikingAnswers;
+    }
+    // 19、踩答案
+    async dislikeAnswer(ctx, next) {
+        const me = await User.findById(ctx.state.user._id).select('+dislikingAnswers');
+        // 防止重复
+        if (!me.dislikingAnswers.map(id => id.toString()).includes(ctx.params.id)) {
+            me.dislikingAnswers.push(ctx.params.id);
+            me.save();
+        }
+        ctx.status = 204;
+        await next();
+    }
+    // 20、取消踩某个答案
+    async undislikeAnswer(ctx) {
+        const me = await User.findById(ctx.state.user._id).select('+dislikingAnswers');
+        // 获取答案在列表中的索引
+        const index = me.dislikingAnswers.map(id => id.toString()).indexOf(ctx.params.id);
+        // 判断是否存在
+        if (index > -1) {
+            me.dislikingAnswers.splice(index, 1);
+            me.save();
+        }
+        ctx.status = 204;
+    }
+```
+
+`./routes/users.js`
+
+```js
+// 赞  两者互斥，作为中间件时，需要执行 next
+router.get('/:id/likingAnswers', listLikingAnswers);
+router.put('/likingAnswers/:id', auth, checkAnswerExist, likeAnswer, undislikeAnswer);
+router.delete('/likingAnswers/:id', auth, checkAnswerExist, unlikeAnswer);
+// 踩
+router.get('/:id/dislikingAnswers', listDislikingAnswers);
+router.put('/dislikingAnswers/:id', auth, checkAnswerExist,  dislikeAnswer, unlikeAnswer);
+router.delete('/dislikingAnswers/:id', auth, checkAnswerExist, undislikeAnswer);
+```
+
+`./controllers/answers.js` 修改答案检查中间件
+
+```js
+	// 检查答案是否存在 中间件
+    async checkAnswerExist(ctx, next) {
+        const answer = await Answer.findById(ctx.params.id).select('+answerer');
+        if (!answer) { ctx.throw(404, '答案不存在'); }
+        // 只有在删改查时候才检查此逻辑，赞和踩答案的时候不检查
+        if (ctx.params.questionId && answer.questionId !== ctx.params.questionId) {
+            ctx.throw(404, '该问题下没有此答案');
+        }
+        // 存储问题，减少重复查询
+        ctx.state.answer = answer;
+        // 执行后续中间件
+        await next();
+    }
+```
+
+## RESTful 风格的收藏答案接口
+
+### 操作步骤
+
+- 设计数据库 Schema
+- 实现接口
+
+### 示例（类似于赞/踩接口）
+
+## 评论模块需求分析
+
+### 评论模块功能点
+
+- 评论的增删改查
+- 答案-评论/问题-评论/用户-评论一对多关系
+- 一级评论与二级评论
+- 赞/踩评论
+
+## 问题-答案-评论模块三级嵌套的增删改查接口
+
 
 
 # 项目问题解决

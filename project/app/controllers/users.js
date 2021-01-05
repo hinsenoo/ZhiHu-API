@@ -4,6 +4,7 @@
 const jsonwebtoken = require('jsonwebtoken');
 const User = require('../models/users');        // 用户模型
 const Question = require('../models/questions'); // 问题模型
+const Answer = require('../models/answers'); // 问题模型
 const { secret } = require('../config');        // 引入 token 密钥
 
 class UsersCtl {
@@ -147,7 +148,6 @@ class UsersCtl {
     // 10、取关用户
     async unfollow(ctx) {
         const me = await User.findById(ctx.state.user._id).select('+following');
-
         // 获取取消关注的人在关注列表中的索引
         const index = me.following.map(id => id.toString()).indexOf(ctx.params.id);
         if (index > -1) {
@@ -182,10 +182,101 @@ class UsersCtl {
         }
         ctx.status = 204;
     }
-    // 14. 列出问题
+    // 14. 问题列表
     async listQuestions(ctx) {
         const questions = await Question.find({ questioner: ctx.params.id });
         ctx.body = questions;
+    }
+
+    // 15、赞答案列表
+    async listLikingAnswers(ctx) {
+        const user = await User.findById(ctx.params.id).select('+likingAnswers').populate('likingAnswers');
+        if (!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user.likingAnswers;
+    }
+    // 16、点赞答案
+    async likeAnswer(ctx, next) {
+        const me = await User.findById(ctx.state.user._id).select('+likingAnswers');
+        // 防止重复
+        if (!me.likingAnswers.map(id => id.toString()).includes(ctx.params.id)) {
+            me.likingAnswers.push(ctx.params.id);
+            me.save();
+            // 操作符 inc：用于增加减少删除
+            await Answer.findByIdAndUpdate(ctx.params.id, { $inc: { voteCount: 1 }});
+        }
+        ctx.status = 204;
+        await next();
+    }
+    // 17、取消赞某个答案
+    async unlikeAnswer(ctx) {
+        const me = await User.findById(ctx.state.user._id).select('+likingAnswers');
+        // 获取答案在列表中的索引
+        const index = me.likingAnswers.map(id => id.toString()).indexOf(ctx.params.id);
+        // 判断是否存在
+        if (index > -1) {
+            me.likingAnswers.splice(index, 1);
+            me.save();
+            await Answer.findByIdAndUpdate(ctx.params.id, { $inc: { voteCount: -1 }});
+        }
+        ctx.status = 204;
+    }
+    // 18、踩答案列表
+    async listDislikingAnswers(ctx) {
+        const user = await User.findById(ctx.params.id).select('+dislikingAnswers').populate('dislikingAnswers');
+        if (!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user.dislikingAnswers;
+    }
+    // 19、踩答案
+    async dislikeAnswer(ctx, next) {
+        const me = await User.findById(ctx.state.user._id).select('+dislikingAnswers');
+        // 防止重复
+        if (!me.dislikingAnswers.map(id => id.toString()).includes(ctx.params.id)) {
+            me.dislikingAnswers.push(ctx.params.id);
+            me.save();
+        }
+        ctx.status = 204;
+        await next();
+    }
+    // 20、取消踩某个答案
+    async undislikeAnswer(ctx) {
+        const me = await User.findById(ctx.state.user._id).select('+dislikingAnswers');
+        // 获取答案在列表中的索引
+        const index = me.dislikingAnswers.map(id => id.toString()).indexOf(ctx.params.id);
+        // 判断是否存在
+        if (index > -1) {
+            me.dislikingAnswers.splice(index, 1);
+            me.save();
+        }
+        ctx.status = 204;
+    }
+    // 21、收藏答案列表
+    async listCollectingAnswers(ctx) {
+        const user = await User.findById(ctx.params.id).select('+collectingAnswers').populate('collectingAnswers');
+        if (!user) { ctx.throw(404, '用户不存在'); }
+        ctx.body = user.collectingAnswers;
+    }
+    // 22、收藏答案
+    async collectAnswer(ctx, next) {
+        const me = await User.findById(ctx.state.user._id).select('+collectingAnswers');
+        // 防止重复
+        if (!me.collectingAnswers.map(id => id.toString()).includes(ctx.params.id)) {
+            me.collectingAnswers.push(ctx.params.id);
+            me.save();
+        }
+        ctx.status = 204;
+        await next();
+    }
+    // 23、取消收藏某个答案
+    async uncollectAnswer(ctx) {
+        const me = await User.findById(ctx.state.user._id).select('+collectingAnswers');
+        // 获取答案在列表中的索引
+        const index = me.collectingAnswers.map(id => id.toString()).indexOf(ctx.params.id);
+        // 判断是否存在
+        if (index > -1) {
+            me.collectingAnswers.splice(index, 1);
+            me.save();
+        }
+        ctx.status = 204;
     }
 }
 

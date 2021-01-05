@@ -6,10 +6,15 @@ const router = new Router({prefix: '/users'});
 const { find,findById,create,update, delete: del, 
         login, checkOwner, listFollowing, listFollowers, 
         checkUserExist, follow, unfollow,
-        listFollowingTopics,followTopic,unfollowTopic, listQuestions 
+        listFollowingTopics,followTopic,unfollowTopic, 
+        listQuestions,
+        listLikingAnswers, likeAnswer, unlikeAnswer,
+        listDislikingAnswers, dislikeAnswer, undislikeAnswer,
+        listCollectingAnswers, collectAnswer, uncollectAnswer,
 } = require('../controllers/users');
 
 const { checkTopicExist } = require('../controllers/topics');
+const { checkAnswerExist } = require('../controllers/answers');
 
 const { secret } = require('../config');
 
@@ -60,10 +65,23 @@ router.delete('/following/:id', auth, checkUserExist, unfollow);
 // 11、用户关注者列表，嵌套关系
 router.get('/:id/followingTopics', listFollowingTopics);
 // 12、关注话题
-router.put('/followingTopic/:id', auth, checkTopicExist, followTopic);
+router.put('/followingTopics/:id', auth, checkTopicExist, followTopic);
 // 13、取关话题
-router.delete('/followingTopic/:id', auth, checkTopicExist, unfollowTopic);
+router.delete('/followingTopics/:id', auth, checkTopicExist, unfollowTopic);
 // 14、问题列表
 router.get('/:id/questions', listQuestions);
+
+// 赞  两者互斥，作为中间件时，需要执行 next
+router.get('/:id/likingAnswers', listLikingAnswers);
+router.put('/likingAnswers/:id', auth, checkAnswerExist, likeAnswer, undislikeAnswer);
+router.delete('/likingAnswers/:id', auth, checkAnswerExist, unlikeAnswer);
+// 踩
+router.get('/:id/dislikingAnswers', listDislikingAnswers);
+router.put('/dislikingAnswers/:id', auth, checkAnswerExist,  dislikeAnswer, unlikeAnswer);
+router.delete('/dislikingAnswers/:id', auth, checkAnswerExist, undislikeAnswer);
+// 收藏答案
+router.get('/:id/collectingAnswers', listCollectingAnswers);
+router.put('/collectingAnswers/:id', auth, checkAnswerExist,  collectAnswer);
+router.delete('/collectingAnswers/:id', auth, uncollectAnswer);
 
 module.exports = router;

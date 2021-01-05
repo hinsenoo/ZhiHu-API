@@ -14,11 +14,12 @@ class AnswerCtl {
             .find({ content: q, questionId: ctx.params.questionId })
             .limit(perPage).skip(page * perPage);
     }
-    // 检查问题是否存在 中间件
+    // 检查答案是否存在 中间件
     async checkAnswerExist(ctx, next) {
         const answer = await Answer.findById(ctx.params.id).select('+answerer');
         if (!answer) { ctx.throw(404, '答案不存在'); }
-        if (answer.questionId !== ctx.params.questionId) {
+        // 只有在删改查时候才检查此逻辑，赞和踩答案的时候不检查
+        if (ctx.params.questionId && answer.questionId !== ctx.params.questionId) {
             ctx.throw(404, '该问题下没有此答案');
         }
         // 存储问题，减少重复查询

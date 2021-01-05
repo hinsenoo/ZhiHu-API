@@ -50,6 +50,21 @@ const userSchema = new Schema({
         type: [{ type: Schema.Types.ObjectId, ref: 'Topic' }],
         select: false,
     },
+    // 赞列表
+    likingAnswers: {
+        type: [{ type: Schema.Types.ObjectId, ref: 'Answer' }],
+        select: false,
+    },
+    // 踩列表
+    dislikingAnswers: {
+        type: [{ type: Schema.Types.ObjectId, ref: 'Answer' }],
+        select: false,
+    },
+    // 收藏答案列表
+    collectingAnswers: {
+        type: [{ type: Schema.Types.ObjectId, ref: 'Answer' }],
+        select: false,
+    },
 
 });
 
