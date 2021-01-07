@@ -9,7 +9,7 @@ const answerSchema = new Schema({
     answerer: { type: Schema.Types.ObjectId, ref: 'User', required: true, select: false },  // 回答者
     questionId: { type: String, required: true }, // 从属问题 id
     voteCount: { type: Number, required: true, default: 0 }, // 投票数
-});
+}, { timestamps: true });
 
 // 使用模式“编译”模型
 module.exports = model('Answer', answerSchema);

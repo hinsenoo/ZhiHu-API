@@ -9,7 +9,9 @@ const commentSchema = new Schema({
     commentator: { type: Schema.Types.ObjectId, ref: 'User', required: true, select: false },  // 评论者
     questionId: { type: String, required: true }, // 从属问题 id
     answerId: { type: String, required: true }, // 从属答案 id
-});
+    rootCommentId: { type: String }, // 评论 id
+    replyTo: { type: Schema.Types.ObjectId, ref: 'User' }, // 对某人回复
+}, { timestamps: true }); // 增加时间戳
 
 // 使用模式“编译”模型
 module.exports = model('Comment', commentSchema);

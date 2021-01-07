@@ -2379,6 +2379,48 @@ router.delete('/dislikingAnswers/:id', auth, checkAnswerExist, undislikeAnswer);
 
 ## 问题-答案-评论模块三级嵌套的增删改查接口
 
+### 重点
+
+```js
+const router = new Router({prefix: '/questions/:questionId/answers/:answerId/comments'});
+```
+
+## 一级评论与二级评论接口的设计与实现
+
+### 操作步骤
+
+- 设计数据库 Schema
+
+- 实现接口
+- 测试
+
+### 示例
+
+- `./models/comments.js` 新增评论id以及对某人回复的id
+
+```js
+// ...
+    rootCommentId: { type: String }, // 评论 id
+    replyTo: { type: Schema.Types.ObjectId, ref: 'User' }, // 对某人回复
+// ...
+```
+
+- `./controllers/comments.js` 查找二级评论时，附带上 rootCommentId
+
+```js
+// find 函数
+const { rootCommentId } = ctx.query;
+ctx.body = await Comment
+            .find({ content: q, questionId, answerId, rootCommentId })
+            .limit(perPage).skip(page * perPage)
+            .populate('commentator replyTo');
+// update 函数
+	// 只允许更新评论内容
+    const { content } = ctx.request.body;
+    // 返回的是更新前的数据
+    await ctx.state.comment.updateOne({ content });
+```
+
 
 
 # 项目问题解决

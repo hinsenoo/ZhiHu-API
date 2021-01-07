@@ -66,7 +66,7 @@ const userSchema = new Schema({
         select: false,
     },
 
-});
+}, { timestamps: true });
 
 // 创建用户模型，使用模式“编译”模型
 module.exports = model('User', userSchema);

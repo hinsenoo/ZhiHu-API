@@ -12,7 +12,7 @@ const questionsSchema = new Schema({
         type: [{ type: Schema.Types.ObjectId, ref: 'Topic' }],
         select: false,
     }
-});
+}, { timestamps: true });
 
 // 使用模式“编译”模型
 module.exports = model('Question', questionsSchema);

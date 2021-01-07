@@ -10,12 +10,13 @@ class CommentCtl {
         const perPage = Math.max(per_page * 1, 1);
         const q = new RegExp(ctx.query.q);
         const { questionId, answerId } = ctx.params;
+        const { rootCommentId } = ctx.query;
         // 查询内容是否符合某个关键字，并且精确匹配 questionId，answerId
         // 并且要返回评论人的信息
         ctx.body = await Comment
-            .find({ content: q, questionId, answerId })
+            .find({ content: q, questionId, answerId, rootCommentId })
             .limit(perPage).skip(page * perPage)
-            .populate('commentator');
+            .populate('commentator replyTo');
     }
     // 检查答案是否存在 中间件
     async checkCommentExist(ctx, next) {
@@ -44,6 +45,8 @@ class CommentCtl {
     async create(ctx) {
         ctx.verifyParams({
             content: { type: 'string', required: true },
+            rootCommentId: { type: 'string', required: false },
+            replyTo: { type: 'string', required: false },
         });
         const commentator = ctx.state.user._id;
         const { questionId, answerId } = ctx.params;
@@ -61,8 +64,10 @@ class CommentCtl {
         ctx.verifyParams({
             content: { type: 'string', required: false },
         });
+        // 只允许更新评论内容
+        const { content } = ctx.request.body;
         // 返回的是更新前的数据
-        await ctx.state.comment.updateOne(ctx.request.body);
+        await ctx.state.comment.updateOne({ content });
         ctx.body = ctx.state.comment;
     }
     async delete(ctx) {

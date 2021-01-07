@@ -9,7 +9,7 @@ const topicSchema = new Schema({
     avatar_url: { type: String },
     // 获取话题简介
     introduction: { type: String, select: false },
-});
+}, { timestamps: true });
 
 // 创建用户模型，使用模式“编译”模型
 module.exports = model('Topic', topicSchema);
