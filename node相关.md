@@ -2421,7 +2421,66 @@ ctx.body = await Comment
     await ctx.state.comment.updateOne({ content });
 ```
 
+## 添加日期
 
+### 操作步骤
+
+- 设计数据库 Schema
+- 实现接口
+- 测试
+
+### 示例
+
+- `./models/comments.js` { timestamps: true } // 增加时间戳
+
+```js
+const commentSchema = new Schema({
+    __v: { type: Number, select: false },
+    content: { type: String, required: true },    // 内容
+    commentator: { type: Schema.Types.ObjectId, ref: 'User', required: true, select: false },  // 评论者
+    questionId: { type: String, required: true }, // 从属问题 id
+    answerId: { type: String, required: true }, // 从属答案 id
+    rootCommentId: { type: String }, // 评论 id
+    replyTo: { type: Schema.Types.ObjectId, ref: 'User' }, // 对某人回复
+}, { timestamps: true }); // 增加时间戳
+```
+
+## 使用 PM2 管理进程（守护进程）
+
+### 操作步骤
+
+- 安装 PM2 
+- 使用 PM2 启动、停止、重启、重载程序
+
+- 使用 PM2 的日志、环境变量等功能
+
+
+
+# 总结
+
+## 回顾
+
+- REST理论与最佳实践
+- Koa2、MongoDB、JWT简介与实践
+- 仿知乎REST API实战
+
+## 重点难点
+
+- REST理论与实践
+- JWT原理及Node.js 实现
+- MongoDB Schema设计
+
+## 经验心得
+
+- RESTful API设计参考GitHub API v3
+- 使用GitHub搜索Koa2资源
+- 使用Stack Overflow搜索问题
+
+## 拓展建议
+
+- 使用企业级Node.js框架———Egg.js
+- 掌握多进程编程知识
+- 学习使用日志和性能监控
 
 # 项目问题解决
 
